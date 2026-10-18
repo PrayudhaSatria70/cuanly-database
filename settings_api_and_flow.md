@@ -63,24 +63,25 @@ Struktur tabel database, DDL migrasi (`migrations/01_init.sql`), dan Prisma sche
 
 ## 3. API & External Service Interaction
 
-### 3.1 Neon Ephemeral Branching API (GitHub Actions CI/CD)
-Repositori ini memanfaatkan workflow otomatisasi [neon_workflow.yml](.github/workflows/neon_workflow.yml) untuk membuat lingkungan database preview terisolasi:
+### 3.1 Neon Ephemeral Branching & Automated Sync (GitHub Actions CI/CD)
+Repositori ini mengintegrasikan dua workflow GitHub Actions untuk menjamin database Neon selalu tersinkronisasi 100% dengan repositori Git:
 
-- **Create Ephemeral Database Branch**:
-  - **Action**: `neondatabase/create-branch-action@v6`
-  - **Trigger**: Pull Request event (`opened`, `reopened`, `synchronize`)
-  - **Payload Parameters**:
-    - `project_id`: `${{ vars.NEON_PROJECT_ID }}`
-    - `branch_name`: `preview/pr-${{ github.event.number }}-${{ branch }}`
-    - `api_key`: `${{ secrets.NEON_API_KEY }}`
-    - `expires_at`: `+14 days` (Time-To-Live otomatis untuk mencegah *stale branches*)
-  - **Output**:
-    - `db_url`: Direct unpooled connection string
-    - `db_url_with_pooler`: Connection string via PgBouncer
-- **Delete Ephemeral Database Branch**:
-  - **Action**: `neondatabase/delete-branch-action@v3`
-  - **Trigger**: Pull Request event (`closed`)
-  - **Behavior**: Menghapus branch preview secara otomatis begitu PR di-merge atau di-close guna menghemat kapasitas compute & storage.
+#### A. Preview Branch per Pull Request (`.github/workflows/neon_workflow.yml`)
+- **Trigger**: Pull Request event (`opened`, `reopened`, `synchronize`, `closed`)
+- **Create & Sync Lifecycle**:
+  - `neondatabase/create-branch-action@v6` membuat branch copy-on-write terisolasi: `preview/pr-${{ github.event.number }}-${{ branch }}` dengan masa kedaluwarsa 14 hari.
+  - Secara otomatis menjalankan `npx prisma db push --schema prisma/schema.prisma --accept-data-loss` ke branch terisolasi tersebut menggunakan connection string `db_url` (unpooled).
+  - Secara otomatis menjalankan `npx prisma db seed` untuk mengisi akun Live Admin, dompet, batas anggaran, 9 kategori sistem Hick's Law, mitra, dan komplain.
+  - `neondatabase/schema-diff-action@v1` memposting perbandingan diff skema ke thread Pull Request.
+- **Cleanup Lifecycle**:
+  - Saat PR di-close / di-merge, `neondatabase/delete-branch-action@v3` menghapus branch preview dan compute endpoint terkait.
+
+#### B. Main Database Production Sync (`.github/workflows/neon_sync_main.yml`)
+- **Trigger**: Push ke branch `main` pada path `prisma/**`, `migrations/**`, `seeds/**`, `package.json`, atau `workflow_dispatch` (manual trigger).
+- **Behavior**:
+  - Mendapatkan connection URI database Neon secara dinamis melalui Neon API (`https://console.neon.tech/api/v2/projects/${{ vars.NEON_PROJECT_ID }}/connection_uri`) menggunakan `secrets.NEON_API_KEY` (atau fallback ke `secrets.DATABASE_URL`).
+  - Menyamarkan URL dengan `::add-mask::` agar password tidak tercatat pada log runner.
+  - Menjalankan `npx prisma db push` dan `npx prisma db seed` ke database utama Neon secara otomatis.
 
 ---
 

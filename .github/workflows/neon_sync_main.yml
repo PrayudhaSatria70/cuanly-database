@@ -1,0 +1,71 @@
+name: Sync Neon Main Database
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'prisma/**'
+      - 'migrations/**'
+      - 'seeds/**'
+      - 'package.json'
+  workflow_dispatch:
+
+concurrency:
+  group: neon-sync-main
+  cancel-in-progress: false
+
+jobs:
+  sync_main:
+    name: Sync Neon Main Database
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Resolve Neon Connection String
+        id: resolve_neon
+        run: |
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+            echo "Using DATABASE_URL from GitHub secrets..."
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> "$GITHUB_ENV"
+            echo "DIRECT_URL=${{ secrets.DIRECT_URL || secrets.DATABASE_URL }}" >> "$GITHUB_ENV"
+          elif [ -n "${{ secrets.NEON_API_KEY }}" ] && [ -n "${{ vars.NEON_PROJECT_ID }}" ]; then
+            echo "Resolving Neon connection string dynamically via Neon API..."
+            POOLED_URI=$(curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+              -H "Accept: application/json" \
+              "https://console.neon.tech/api/v2/projects/${{ vars.NEON_PROJECT_ID }}/connection_uri?database_name=neondb&role_name=neondb_owner&pooled=true" \
+              | jq -r .uri)
+            DIRECT_URI=$(curl -s -H "Authorization: Bearer ${{ secrets.NEON_API_KEY }}" \
+              -H "Accept: application/json" \
+              "https://console.neon.tech/api/v2/projects/${{ vars.NEON_PROJECT_ID }}/connection_uri?database_name=neondb&role_name=neondb_owner&pooled=false" \
+              | jq -r .uri)
+            
+            if [ -z "$POOLED_URI" ] || [ "$POOLED_URI" = "null" ]; then
+              echo "::error::Failed to fetch connection URI from Neon API. Verify NEON_API_KEY and NEON_PROJECT_ID."
+              exit 1
+            fi
+
+            echo "::add-mask::$POOLED_URI"
+            echo "::add-mask::$DIRECT_URI"
+            echo "DATABASE_URL=$POOLED_URI" >> "$GITHUB_ENV"
+            echo "DIRECT_URL=$DIRECT_URI" >> "$GITHUB_ENV"
+          else
+            echo "::error::Neither secrets.DATABASE_URL nor (secrets.NEON_API_KEY + vars.NEON_PROJECT_ID) are configured."
+            exit 1
+          fi
+
+      - name: Push Schema to Neon Main
+        run: npx prisma db push --schema prisma/schema.prisma --accept-data-loss
+
+      - name: Seed Neon Main Database
+        run: npx prisma db seed

@@ -98,12 +98,39 @@ npm run prisma:seed
 
 ---
 
-## 6. Neon Database Branching CI/CD (GitHub Actions)
-Repositori ini dilengkapi workflow GitHub Actions ([neon_workflow.yml](.github/workflows/neon_workflow.yml)) yang secara otomatis membuat database branch terisolasi untuk setiap Pull Request (PR) dan menghapusnya saat PR ditutup:
+## 6. Otomatisasi Sinkronisasi Database Neon (GitHub Actions CI/CD)
 
-1. **Variables & Secrets yang Dibutuhkan**:
-   - `vars.NEON_PROJECT_ID`: ID project Neon Anda (tersedia di Neon Console Settings).
-   - `secrets.NEON_API_KEY`: API Key akun Neon Anda (dibuat di Neon Account Settings > API Keys).
-2. **Lifecycle Branch**:
-   - **PR Opened / Synchronize / Reopened**: Membuat branch baru dengan format `preview/pr-<PR_NUMBER>-<BRANCH_NAME>` dan masa berlaku (TTL) otomatis 14 hari.
-   - **PR Closed**: Menghapus branch secara otomatis untuk menghemat resource database.
+Repositori ini dilengkapi dua workflow GitHub Actions yang menjamin skema dan data database Neon selalu tersinkronisasi dengan repositori ini:
+
+### A. Preview Database Branch per Pull Request ([neon_workflow.yml](.github/workflows/neon_workflow.yml))
+1. **Pemicu**: Setiap kali Pull Request (PR) dibuka, diperbarui (*synchronize*), atau dibuka kembali (*reopened*).
+2. **Eksekusi Otomatis**:
+   - Membuat branch database preview terisolasi dari induknya dengan masa berlaku 14 hari.
+   - Menjalankan `npx prisma db push` langsung ke branch preview tersebut.
+   - Menjalankan `npx prisma db seed` untuk mengisi akun admin, kategori standar, mitra, dan komplain.
+   - Mengunggah komentar ringkasan perbedaan (*schema diff*) ke diskusi Pull Request.
+3. **Pembersihan Otomatis**: Saat PR ditutup (*closed* / *merged*), branch preview dihapus secara otomatis.
+
+### B. Sinkronisasi Database Utama ([neon_sync_main.yml](.github/workflows/neon_sync_main.yml))
+1. **Pemicu**: Push ke branch `main` pada perubahan direktori `prisma/**`, `migrations/**`, atau `seeds/**`, serta dapat dipicu manual (*workflow dispatch*) dari tab Actions di GitHub.
+2. **Eksekusi Otomatis**:
+   - Mengambil koneksi database Neon secara otomatis menggunakan `secrets.NEON_API_KEY` dan `vars.NEON_PROJECT_ID` (atau `secrets.DATABASE_URL`).
+   - Menerapkan skema relasional terbaru dan seeder ke database utama Neon secara aman tanpa menampilkan kredensial pada log runner.
+
+---
+
+## 7. Sinkronisasi Manual dari Mesin Lokal ke Neon
+
+Jika Anda ingin langsung menyinkronkan database Neon utama dari komputer lokal:
+1. Buka file `.env` di repositori ini.
+2. Masukkan connection string Neon pada baris `DATABASE_URL` dan `DIRECT_URL`:
+   ```env
+   DATABASE_URL="postgresql://neondb_owner:PASSWORD_ANDA@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+   DIRECT_URL="postgresql://neondb_owner:PASSWORD_ANDA@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+   ```
+3. Jalankan perintah:
+   ```bash
+   npm run prisma:push
+   npm run prisma:seed
+   ```
+4. Setelah selesai, pastikan file `.env` tetap aman dan tidak dikomit (dilindungi oleh `.gitignore`).
