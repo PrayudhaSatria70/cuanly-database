@@ -1,0 +1,35 @@
+﻿version: '3.8'
+
+services:
+  cuanly-postgres:
+    image: postgres:16-alpine
+    container_name: cuanly-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: 
+      POSTGRES_USER: 
+      POSTGRES_PASSWORD: 
+    ports:
+      - :5432
+    volumes:
+      - cuanly_pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d/migrations
+      - ./seeds:/docker-entrypoint-initdb.d/seeds
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U -d ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cuanly-adminer:
+    image: adminer:latest
+    container_name: cuanly-adminer
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    depends_on:
+      - cuanly-postgres
+
+volumes:
+  cuanly_pgdata:
+    driver: local
