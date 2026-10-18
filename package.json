@@ -1,0 +1,36 @@
+{
+  "name": "cuanly-database",
+  "version": "1.0.0",
+  "description": "PostgreSQL relational schema, DDL migrations, seed data, and CI/CD workflows for Cuanly",
+  "scripts": {
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate",
+    "prisma:format": "prisma format",
+    "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "prisma db seed",
+    "prisma:studio": "prisma studio",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
+  "keywords": [
+    "cuanly",
+    "database",
+    "postgresql",
+    "neon",
+    "prisma"
+  ],
+  "author": "Cuanly Team",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
+  }
+}

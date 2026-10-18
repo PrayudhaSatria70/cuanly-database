@@ -43,75 +43,50 @@ Endpoint API yang disediakan:
 
 ---
 
-## 4. Arsitektur Komponen
+## 4. Arsitektur Komponen & Keselarasan Antar Repositori
 
 ### 4.1 Repositori Database: `cuanly-database`
 Lokasi: `C:\Users\muhas\Desktop\WORK Projects\cuanly-database`
-- **Prisma Schema (`prisma/schema.prisma`)**: Skema model relasional terpadu yang dapat digunakan langsung dengan Prisma CLI.
-- **SQL Migration Script (`migrations/01_init.sql`)**: Skrip DDL standar PostgreSQL (kompatibel dengan Vercel Postgres, Neon, Supabase, Cloud SQL, atau Docker).
-- **SQL Seed Script (`seeds/seed.sql`)**: Data awal akun live admin (`admin` / `admin123`), 9 kategori default Hick's Law, data awal mitra dan komplain.
-- **`docker-compose.yml`**: Konfigurasi opsional bagi pengguna yang ingin menjalankan PostgreSQL lokal di masa mendatang.
-- **Dokumentasi Deployment Vercel / Cloud**: Panduan menghubungkan database ke provider cloud PostgreSQL (seperti Vercel Postgres / Neon / Supabase).
+- **Prisma Schema (`prisma/schema.prisma`)**: Skema model relasional terpadu yang telah tervalidasi dengan Prisma CLI.
+- **SQL Migration Script (`migrations/01_init.sql`)**: Skrip DDL standar PostgreSQL (kompatibel dengan Neon, Vercel Postgres, Supabase, Cloud SQL, atau Docker).
+- **SQL & TypeScript Seed Scripts (`seeds/seed.sql` & `prisma/seed.ts`)**: Data awal akun live admin (`admin` / `admin123`), dompet awal, batas anggaran awal, mutasi demo, 9 kategori default Hick's Law, data mitra UMKM, dan komplain tiket.
+- **`docker-compose.yml`**: Konfigurasi container PostgreSQL 16 & Web Adminer dengan mount script init otomatis.
+- **Neon Ephemeral Branching (`.github/workflows/neon_workflow.yml`)**: Otomatisasi branch database preview terisolasi per Pull Request.
+- **Proteksi `.env`**: `.gitignore` mengecualikan seluruh varian `.env` agar kredensial tidak pernah terekspos ke Git.
 
 ### 4.2 Repositori Backend Service: `cuanly-backend`
 Lokasi: `C:\Users\muhas\Desktop\WORK Projects\cuanly-backend`
 - Framework: **NestJS** (Modular Architecture)
 - ORM: **Prisma ORM**
-- Modul-modul:
-  - `auth`: Login (Username/Email + Password/PIN), Register, Me, Password Update, Profile Update.
-  - `users`: Profil, Pengaturan (`/users/settings`), Admin User Management.
-  - `transactions`: CRUD transaksi, filter rentang tanggal, search, kategori.
-  - `categories`: Kategori default & kustom.
-  - `finance`: Perhitungan ringkasan keuangan (*summary*), limit budget per kategori, allowance bulanan.
-  - `wallets`: Multi-wallet CRUD dan validasi kuota tier.
-  - `debts`: Manajemen utang & piutang (Gold+).
-  - `workspace`: Anggota tim shared workspace (B2B).
-  - `ocr`: Endpoint simulasi scanner nota belanja.
-  - `admin`: Statistik platform, verifikasi mitra, komplain pengguna.
-- Keamanan: Hashing Bcrypt, Stateless JWT Guard, Role-Based Access Control (`@Roles('ADMIN')`), Class-Validator Pipes, CORS terproteksi.
-- Dokumentasi API: Swagger OpenAPI di `/api/docs`.
+- Modul-modul Terintegrasi:
+  - `auth`: Login, Register, Me, Profile Update, Avatar, Password, Subscription.
+  - `beranda`: Agregasi dashboard kas, mutasi, dompet, dan kategori.
+  - `transaksi`: Transaksi list, detail `[id]`, scanner OCR `scan`, dan penambahan transaksi `tambah`.
+  - `budget`: Budget monitoring dan detail `[slug]`.
+  - `pricing`: Pricing tiers publik, my-plan, dan upgrade paket langganan.
+  - `profil`: Profil GET, PUT, avatar POST.
+  - `settings`: Preferensi pengguna multi-tab.
+  - `wallets`, `debts`, `workspace`, `ocr`, `admin` (dashboard, categories, transactions, users, verification, complaints).
 
-### 4.3 Integrasi Frontend: `cuanly-frontend`
+### 4.3 Repositori Frontend: `cuanly-frontend`
 Lokasi: `C:\Users\muhas\Desktop\WORK Projects\cuanly-frontend`
-- **`src/services/apiClient.ts`**: HTTP client berbasis Axios / Fetch dengan interceptor token JWT dan penanganan error 401.
-- **`src/services/api.ts`**: Kumpulan typed API client functions untuk semua modul backend.
-- **`src/contexts/AuthContext.tsx`**: Logika hybrid cerdas:
-  - Tombol 1-Click Demo User & Demo Admin tetap 100% menggunakan mock lokal.
-  - Form Login manual mendukung login akun live admin (`admin` / `admin123`) dan akun registrasi via backend API.
-  - Form Registrasi `/register` mengirimkan data ke database PostgreSQL melalui backend.
-  - Pergantian password & profil langsung tersinkronisasi ke server.
-- **`src/app/(user)/settings/page.tsx`**: Tersinkronisasi dengan endpoint `PUT /api/v1/users/settings` saat pengguna live menyimpan opsi pengaturan apapun.
-- **`src/contexts/FinanceContext.tsx` & `AdminContext.tsx`**: Tersinkronisasi langsung dengan data live backend saat pengguna live login.
+- Framework: **Next.js 14 App Router**
+- Rute-rute yang Selaras:
+  - `(auth)/login`, `(auth)/register`
+  - `(user)/beranda`, `(user)/transaksi`, `(user)/transaksi/[id]`, `(user)/transaksi/scan`, `(user)/transaksi/tambah`
+  - `(user)/budget`, `(user)/budget/[slug]`
+  - `(user)/profil`, `(user)/settings`
+  - `pricing`
+  - `admin/dashboard`, `admin/categories`, `admin/transactions`, `admin/users`, `admin/users/[id]`, `admin/verification`, `admin/verification/[id]`, `admin/complaints`, `admin/complaints/[id]`
 
 ---
 
-## 5. Rencana Tahapan Eksekusi
+## 5. Status Eksekusi & Checklist Paritas
 
-1. **Tahap 1**: Membangun skema DDL, Prisma schema, seeder data (Live Admin `admin`/`admin123`), dan docker-compose di `cuanly-database`.
-2. **Tahap 2**: Menginisialisasi project NestJS, Prisma ORM, konfigurasi environment, dan Swagger docs di `cuanly-backend`.
-3. **Tahap 3**: Mengimplementasikan seluruh modul backend (`auth`, `users`, `settings`, `transactions`, `categories`, `finance`, `wallets`, `debts`, `ocr`, `admin`).
-4. **Tahap 4**: Menguji build dan endpoint backend secara menyeluruh.
-5. **Tahap 5**: Membangun client API di `cuanly-frontend` dan menghubungkan form login, registrasi, settings, finance, dan admin.
-6. **Tahap 6**: Verifikasi end-to-end, update dokumentasi `settings_api_and_flow.md`, dan penyelesaian akhir.
-
-### 3.3 Dynamic Routing Folder Paritas dengan Frontend Next.js
-Modul backend diatur dengan folder berstruktur dynamic routing yang identik 100% dengan frontend:
-- `src/modules/transaksi/[id]/` ──► Menangani `GET`, `PUT`, `DELETE /api/v1/transaksi/:id`
-- `src/modules/budget/[slug]/` ──► Menangani `GET`, `PUT /api/v1/budget/:slug`
-- `src/modules/admin/complaints/[id]/` ──► Menangani `GET`, `PUT /api/v1/admin/complaints/:id`
-- `src/modules/admin/users/[id]/` ──► Menangani `GET`, `PUT /api/v1/admin/users/:id/toggle-status`
-- `src/modules/admin/verification/[id]/` ──► Menangani `GET`, `PUT /api/v1/admin/verification/:id/verify`
-### 9. Profile Pictures & Neon / Vercel Cloud Deployment
-- [x] **Edit, Upload, Save, and Update Profile Pictures (`avatarUrl`):**
-  - Backend `POST /api/v1/auth/avatar` and `PUT /api/v1/auth/profile` handle Base64 Data URLs and image URLs.
-  - Express body parser configured with `10mb` payload limit in both `src/main.ts` and `api/index.ts`.
-  - Frontend interactive camera upload overlay added directly on `/profil` and file picker on `/settings?tab=account`.
-  - Automatic real-time synchronization across `TopHeader`, `ProfilPage`, `SettingsPage`, and backend database.
-- [x] **Neon Cloud PostgreSQL Integration:**
-  - Dual connection strings supported: pooled `DATABASE_URL` (for serverless lambdas) and direct `DIRECT_URL` (for schema migrations).
-  - Updated `prisma/schema.prisma` with `directUrl = env("DIRECT_URL")`.
-  - Updated `.env.example` in both backend and database with complete Neon setup guides.
-- [x] **Vercel Serverless Backend Deployment:**
-  - Serverless entrypoint created at `api/index.ts`.
-  - Vercel routing configuration created at `vercel.json`.
-  - Build lifecycle scripts configured: `"vercel-build": "prisma generate && nest build"` and `"postinstall": "prisma generate"`.
+- [x] **Tahap 1**: Membangun skema DDL, Prisma schema, seeder data (Live Admin `admin`/`admin123`), dompet awal, batas anggaran awal, dan docker-compose di `cuanly-database`.
+- [x] **Tahap 2**: Validasi skema Prisma (`prisma validate`, `prisma format`) dengan dual connection string (`DATABASE_URL` pooled & `DIRECT_URL` unpooled).
+- [x] **Tahap 3**: Mengonfigurasi `package.json` di `cuanly-database` dengan script manajemen Prisma (`generate`, `push`, `seed`, `validate`, `format`) dan script Docker (`up`, `down`, `logs`).
+- [x] **Tahap 4**: Pemutakhiran seeder ganda (`seeds/seed.sql` dan `prisma/seed.ts`) agar mendukung testing langsung via Prisma CLI maupun Docker init container.
+- [x] **Tahap 5**: Proteksi ketat keamanan environment (`.env`) via `.gitignore`, memastikan `.env` tidak masuk git tracking (`git rm --cached .env`), dan pemutakhiran `.env.example`.
+- [x] **Tahap 6**: Penyelarasan matriks 1:1 rute frontend, modul backend, dan skema tabel database di `settings_api_and_flow.md` dan `README.md`.
+- [x] **Tahap 7**: Verifikasi final seluruh artefak dan pengujian tanpa merusak user worktree.

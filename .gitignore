@@ -1,0 +1,28 @@
+# Environment variables (Never commit sensitive credentials to git!)
+.env
+.env.*
+.env.local
+.env.production
+.env.development
+!.env.example
+
+# Dependencies & Build
+node_modules/
+dist/
+build/
+.cache/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.local
