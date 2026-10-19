@@ -1228,3 +1228,40 @@ Both `cuanly-database` and `cuanly-backend` share the identical, fully loaded da
 | **Backend (`cuanly-backend`)** | NestJS Production Build | `npx nest build` | **PASSED** (`dist/` compiled successfully) |
 | **Database (`cuanly-database`)**| Prisma Schema Validation | `prisma validate` | **PASSED** (Schema is valid 🚀) |
 | **Tri-Repo Sync** | Cross-Repo Schema Parity | File Hash / Content Diff | **PASSED** (100% Identical) |
+
+---
+
+## 16. Subscription Features Full-Page Architecture & Modal Elimination (Plan-Compliant Parity)
+
+### 16.1 Design Paradigm & Navigation Parity
+
+To ensure an intuitive, unified, and professional user experience, all 7 subscription features operate as first-class, dedicated full pages with exact visual and behavioral parity to standard User Menu items (`/beranda`, `/transaksi`, `/budget`) and Admin Backoffice items (`/admin/*`):
+
+| Feature Route | Display Name | Required Tier | Plan-Compliant Behavior | Free / Non-Compliant Tier Behavior |
+|---|---|---|---|---|
+| `/wallets` | Multi-Dompet | **Silver** (Max 2 for Free) | Full-page management, inline creation, zero modals | Add wallet button triggers `openUpgradeModal` when >= 2 wallets |
+| `/debts` | Utang & Piutang | **Gold** | Full-page ledger, inline debtor form, settlement toggles, zero modals | Auto-popups `openUpgradeModal` on mount + locked preview CTA |
+| `/workspace` | Team Shared Workspace | **B2B** | Full-page team roster, inline invite, audit logs, shared pool | Auto-popups `openUpgradeModal` on mount + locked preview CTA |
+| `/bank-sync` | Bank Sync Otomatis | **Gold** | Full-page open banking portal, inline connect, sync-all action | Auto-popups `openUpgradeModal` on mount + locked preview CTA |
+| `/investasi` | Aset & Investasi | **Gold** | Full-page net worth & portfolio tracker, inline asset form | Auto-popups `openUpgradeModal` on mount + locked preview CTA |
+| `/analitik-ai` | Analitik AI Cuanly | **Gold** | Full-page AI intelligence diagnostic suite & health score gauge | Auto-popups `openUpgradeModal` on mount + locked preview CTA |
+| `/bisnis` | Bisnis & Pajak UMKM | **B2B** | Full-page 3-pillar cashflow & automated PPh Final 0.5% calculator | Auto-popups `openUpgradeModal` on mount + locked preview CTA |
+
+---
+
+### 16.2 Complete Elimination of Redundant Popup Modals
+
+For users whose active plan meets or exceeds the tier requirement (and Super Admins):
+1. **No Modal Popups on Landing**: The page renders cleanly without intrusive popup dialogues or backdrop layers.
+2. **Removal of "Open Quick Modal" Buttons**: Redundant header buttons that previously summoned popup modals (`BankSyncModal`, `InvestmentTrackerModal`, `AiAnalyticsModal`, `BusinessFinanceModal`, `SharedWorkspaceModal`) have been completely removed.
+3. **Inline Interactive Operations**: All transactional and configuration actions (adding assets, connecting banks, inviting colleagues, updating tax configurations, adding debts/wallets) occur directly within responsive page layouts, inline expandable panels, or native tab switchers.
+4. **Beranda Dashboard Card Navigation**: Clicking any of the 7 subscription feature cards on the `/beranda` dashboard immediately executes `router.push('/<feature>')`, seamlessly navigating the user to the full page instead of spawning a modal dialog.
+
+---
+
+### 16.3 Controlled Paywall Modals for Free Plan Accounts
+
+For unauthenticated users, Free tier accounts, or accounts lacking the required plan:
+1. **Automatic Upgrade Modal Launch**: Navigating to any locked feature page automatically triggers `openUpgradeModal(title, tier, desc, benefits)` via a guarded `useEffect` hook on mount (one-shot per session).
+2. **Non-Destructive Background Preview**: Behind the modal, the page presents a clear, blurred/disabled preview with a prominent locked access banner (`Lock` icon, tier explanation, and "Upgrade to [Plan]" CTA button).
+3. **Re-Triggerable Dialog**: If the user dismisses the modal to inspect the page preview, clicking the "Upgrade to [Plan]" CTA instantly re-opens the upgrade modal and guides them to checkout.
