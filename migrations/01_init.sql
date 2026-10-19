@@ -196,3 +196,72 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+
+-- 12. INVESTMENT ASSETS TABLE (GOLD & B2B FEATURE)
+CREATE TABLE IF NOT EXISTS investment_assets (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    category VARCHAR(50) NOT NULL, -- 'REKSADANA', 'SAHAM', 'EMAS', 'CRYPTO', 'PROPERTI'
+    quantity DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+    buy_price BIGINT NOT NULL,
+    current_price BIGINT NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_investments_user ON investment_assets(user_id);
+CREATE INDEX IF NOT EXISTS idx_investments_category ON investment_assets(category);
+
+-- 13. BANK CONNECTIONS TABLE (AUTOMATIC BANK SYNC - GOLD & B2B FEATURE)
+CREATE TABLE IF NOT EXISTS bank_connections (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    institution VARCHAR(50) NOT NULL, -- 'BCA', 'MANDIRI', 'BRI', 'BNI', 'GOPAY', 'OVO', 'DANA'
+    account_number VARCHAR(100) NOT NULL,
+    account_name VARCHAR(255) NOT NULL,
+    sync_status VARCHAR(50) NOT NULL DEFAULT 'CONNECTED', -- 'CONNECTED', 'SYNCING', 'ERROR', 'DISCONNECTED'
+    last_sync_at TIMESTAMPTZ,
+    auto_sync BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_bank_conn_user ON bank_connections(user_id);
+
+-- 14. BUSINESS PROFILES TABLE (BUSINESS CASHFLOW & PPH FINAL TAX - B2B FEATURE)
+CREATE TABLE IF NOT EXISTS business_profiles (
+    id VARCHAR(64) PRIMARY KEY,
+    user_id VARCHAR(64) UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    business_name VARCHAR(255) NOT NULL,
+    npwp VARCHAR(50),
+    period VARCHAR(20) NOT NULL DEFAULT '2026',
+    annual_revenue BIGINT NOT NULL DEFAULT 0,
+    operating_expense BIGINT NOT NULL DEFAULT 0,
+    cash_runway_months DOUBLE PRECISION NOT NULL DEFAULT 12.0,
+    tax_rate DOUBLE PRECISION NOT NULL DEFAULT 0.005, -- 0.5% PPh Final UMKM
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_biz_profile_user ON business_profiles(user_id);
+
+-- ENHANCE DEBTS & WALLETS TABLES IF COLUMNS DO NOT EXIST
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='debts' AND column_name='tenor_months') THEN
+        ALTER TABLE debts ADD COLUMN tenor_months INT DEFAULT 1;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='debts' AND column_name='interest_rate') THEN
+        ALTER TABLE debts ADD COLUMN interest_rate DOUBLE PRECISION DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='debts' AND column_name='installment_amount') THEN
+        ALTER TABLE debts ADD COLUMN installment_amount BIGINT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='debts' AND column_name='paid_amount') THEN
+        ALTER TABLE debts ADD COLUMN paid_amount BIGINT DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='wallets' AND column_name='shared_role') THEN
+        ALTER TABLE wallets ADD COLUMN shared_role VARCHAR(20) DEFAULT 'ADMIN';
+    END IF;
+END $$;
